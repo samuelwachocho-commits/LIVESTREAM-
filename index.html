@@ -1,0 +1,1351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CeremonyStream</title>
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="CeremonyStream">
+<meta name="description" content="Record and live-stream ceremonies with overlays, music and stabilisation.">
+
+<style>
+:root { color-scheme: light; --ink:#152238; --muted:#65738a; --blue:#1457d9; --line:#dbe2ec; --bg:#f4f7fb; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; color:var(--ink); background:var(--bg); }
+.site-header { display:flex; justify-content:space-between; align-items:center; gap:1rem; padding:18px clamp(18px,5vw,64px); background:#fff; border-bottom:1px solid var(--line); }
+.brand { font-size:1.25rem; font-weight:800; color:var(--ink); text-decoration:none; }
+.tagline,.muted { color:var(--muted); }
+.home { max-width:1000px; margin:0 auto; padding:8vh 20px 40px; }
+.hero { padding:clamp(24px,6vw,64px); border-radius:24px; background:linear-gradient(135deg,#102b58,#1d63d8); color:white; }
+.hero p:not(.eyebrow) { max-width:600px; line-height:1.7; color:#e0eaff; }
+.eyebrow { font-size:.8rem; letter-spacing:.16em; font-weight:800; }
+h1 { font-size:clamp(2rem,5vw,3.2rem); line-height:1.1; margin:.4em 0; }
+h2 { margin-top:0; }
+.actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
+.button { display:inline-flex; justify-content:center; align-items:center; border:0; border-radius:10px; padding:12px 18px; font:inherit; font-weight:700; cursor:pointer; text-decoration:none; }
+.button:disabled { opacity:.45; cursor:not-allowed; }
+.primary { background:var(--blue); color:#fff; }
+.hero .primary { background:#fff; color:#173f83; }
+.secondary { background:#eaf0f8; color:#18365f; }
+.danger { background:#a82335; color:white; }
+.notice,.panel { background:#fff; border:1px solid var(--line); border-radius:16px; padding:22px; margin-top:22px; }
+.notice p { margin-bottom:0; color:var(--muted); }
+.workspace { width:min(850px,100%); margin:0 auto; padding:28px 18px 50px; }
+.workspace h1 { font-size:2.2rem; }
+.back { color:var(--blue); text-decoration:none; font-weight:650; }
+label { display:block; margin:16px 0 6px; font-weight:700; font-size:.92rem; }
+input { display:block; width:100%; padding:12px 13px; border:1px solid #cbd5e3; border-radius:9px; font:inherit; background:white; color:var(--ink); }
+.hint { font-size:.86rem; color:var(--muted); line-height:1.5; }
+.video-wrap { position:relative; background:#091321; border-radius:12px; overflow:hidden; margin-top:18px; min-height:180px; display:grid; place-items:center; }
+video { width:100%; max-height:65vh; display:block; background:#091321; border-radius:12px; margin-top:18px; }
+.video-wrap video { margin:0; max-height:60vh; }
+[id$="videoPlaceholder"] { position:absolute; color:#cbd5e1; pointer-events:none; }
+.status { padding:12px; border-radius:9px; background:#f0f4f9; color:#3c4a60; overflow-wrap:anywhere; }
+.status.success { background:#e8f7ee; color:#14643a; }
+.status.error { background:#fff0f0; color:#9b1c2b; }
+footer { text-align:center; color:var(--muted); font-size:.85rem; padding:25px 16px; }
+@media(max-width:520px) { .site-header { align-items:flex-start; flex-direction:column; gap:4px; } .hero { border-radius:16px; } .button { width:100%; } }
+select { display:block; width:100%; padding:12px 13px; border:1px solid #cbd5e3; border-radius:9px; font:inherit; background:white; color:var(--ink); }
+.row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media(max-width:520px){ .row { grid-template-columns:1fr; } }
+label.check { display:flex; gap:10px; align-items:flex-start; font-weight:600; }
+label.check input { width:auto; margin-top:3px; }
+.rec-badge { position:absolute; top:10px; left:10px; background:rgba(168,35,53,.92); color:#fff; padding:5px 10px; border-radius:20px; font-size:.85rem; font-weight:700; }
+.rec-badge b { font-variant-numeric:tabular-nums; }
+.thumbs { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.thumbs img { height:64px; border-radius:8px; border:1px solid var(--line); }
+.video-wrap video.flash { animation:flash .35s; }
+@keyframes flash { from { filter:brightness(3); } to { filter:none; } }
+.panel input[readonly] { background:#f6f8fb; font-size:.85rem; }
+[hidden] { display:none !important; }
+.nav { display:flex; gap:14px; flex-wrap:wrap; }
+.nav a { color:var(--blue); font-weight:650; text-decoration:none; }
+
+.view[hidden]{display:none !important}
+
+
+/* ===== PRISM-style dark camera UI ===== */
+:root{color-scheme:dark;--ink:#f2f4f8;--muted:#9aa3b2;--blue:#e6f23a;--line:#2b2f38;--bg:#0c0e13;--lime:#e6f23a}
+.site-header{background:#14161b}
+.notice,.panel{background:#1b1d22}
+.button{border-radius:999px}
+.primary,.hero .primary{background:#fff;color:#111}
+.secondary{background:#272a31;color:#fff}
+input,select{background:#272a31;color:#fff;border-color:#3a3f4a}
+.panel input[readonly]{background:#14161b}
+.status{background:#272a31;color:#d5d9e2}
+.status.success{background:rgba(230,242,58,.14);color:var(--lime)}
+.status.error{background:rgba(255,90,100,.16);color:#ff9aa3}
+.cam{position:fixed;inset:0;z-index:50;background:#000;color:#fff;overflow:hidden}
+.cam video{position:absolute!important;inset:0;width:100%!important;height:100%!important;max-height:none!important;object-fit:cover;margin:0!important;border-radius:0!important;background:#000}
+.cam video.flash{animation:flash .35s}
+.cam .ph{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:14px;text-align:center;color:#cfd5e0;padding:24px;z-index:1;pointer-events:auto}
+.cam .top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 14px) 14px 22px;z-index:3;background:linear-gradient(#000a,transparent)}
+.cam .grp{display:flex;gap:12px;min-width:104px}.cam .grp.right{justify-content:flex-end}
+.cam .ibtn{width:44px;height:44px;border-radius:50%;border:2px solid #fff;background:transparent;color:#fff;font-size:20px;line-height:1;display:grid;place-items:center;cursor:pointer;padding:0}
+.cam .dots{display:flex;gap:10px}.cam .dots i{width:9px;height:9px;border-radius:50%;background:#fff6}.cam .dots i.on{background:#fff}
+.cam .rec-badge{position:static}
+.cam .sheet{position:absolute;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 76px);bottom:215px;overflow:auto;background:rgba(32,32,36,.88);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-radius:22px;padding:18px 18px 8px;z-index:4}
+.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;padding-bottom:16px;border-bottom:1px solid #ffffff22}
+.quick button{background:none;border:0;color:#fff;font:inherit;font-size:.9rem;display:grid;justify-items:center;gap:6px;cursor:pointer}
+.quick .circ{width:58px;height:58px;border-radius:50%;background:#fff;color:#111;display:grid;place-items:center;font-size:24px}
+.quick .off .circ{background:#777;color:#222}
+.sheet h3{margin:18px 0 2px;font-size:.88rem;color:#aab0bc;font-weight:600}
+.sheet label.item{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0;padding:12px 0;font-weight:600;font-size:1.02rem}
+.sheet .item select,.sheet .item input:not(.sw){width:52%;margin:0;padding:9px 10px}
+.sheet .sw{appearance:none;-webkit-appearance:none;display:inline-block;width:52px;height:30px;flex:none;margin:0;padding:0;border:0;border-radius:15px;background:#777;position:relative;cursor:pointer}
+.sheet .sw::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#ddd;transition:left .15s}
+.sheet .sw:checked{background:#8f9a1f}.sheet .sw:checked::after{left:25px;background:var(--lime)}
+.sheet a.item{display:block;color:#fff;text-decoration:none;font-weight:600;padding:12px 0}
+.cam .bottom{position:absolute;left:0;right:0;bottom:0;padding:30px 16px calc(env(safe-area-inset-bottom,0px) + 10px);z-index:3;background:linear-gradient(transparent,#000b 45%)}
+.cam .thumbs{justify-content:center;margin:0 0 10px}.cam .thumbs img{height:46px}
+.cam .status{margin:0 auto 14px;max-width:520px;text-align:center;background:#000a;color:#fff;font-size:.85rem;padding:8px 12px;border-radius:12px}
+.cam .status.success{color:var(--lime)}.cam .status.error{color:#ff9aa3}
+.cam .ctrls{display:flex;align-items:center;justify-content:center;gap:26px;margin-bottom:14px}
+.cam .shutter{min-width:170px;height:68px;border-radius:34px;background:#fff;color:#111;border:0;font:inherit;font-size:1.35rem;font-weight:700;padding:0 26px;cursor:pointer}
+.cam .shutter.live{background:#d92d42;color:#fff}
+.cam .side{width:56px;height:56px;border-radius:50%;background:#ffffff26;color:#fff;border:0;font-size:22px;padding:0;cursor:pointer}
+.cam #broadcast-stopBtn:not(:disabled){background:#d92d42}
+.cam button:disabled{opacity:.4;cursor:not-allowed}
+.tabs{display:flex;justify-content:center;gap:26px}
+.tabs a{color:#ffffffaa;text-decoration:none;font-weight:700;position:relative;padding-top:12px}
+.tabs a.on{color:#fff}.tabs a.on::before{content:"";position:absolute;top:0;left:50%;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:var(--lime)}
+.cam .recover{position:absolute;top:calc(env(safe-area-inset-top,0px) + 80px);left:12px;right:12px;z-index:5;margin:0}
+
+.cam .dots button{width:16px;height:16px;padding:2.5px;box-sizing:border-box;border:0;border-radius:50%;background:#fff6;background-clip:content-box;cursor:pointer}
+.cam .dots button.on{background:#fff;background-clip:content-box}
+.quick.five{grid-template-columns:repeat(5,1fr)}.quick.five .circ{width:48px;height:48px;font-size:20px}.quick.five button{font-size:.76rem}
+.ovrow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #ffffff18}
+.ovrow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.ovrow button{background:none;border:0;color:#fff;font-size:18px;cursor:pointer;padding:6px}
+.ovform{padding:4px 0 10px;border-bottom:1px solid #ffffff18}
+.sheet .item input[type=color]{padding:2px;height:36px}.sheet .item input[type=range]{padding:0}
+.sheet .pill{background:#ffffff26;color:#fff;border:0;border-radius:999px;padding:8px 14px;font:inherit;font-weight:600;cursor:pointer;margin:6px 6px 0 0}
+.ovrow input:not(.sw){flex:1;min-width:0;margin:0;padding:9px 10px}
+.ovrow button.nm{flex:1;text-align:left;font-size:1rem;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.logos{display:flex;flex-wrap:wrap;gap:10px;padding:8px 0}.logo{position:relative}.logo img{width:64px;height:64px;object-fit:contain;background:#ffffff1a;border-radius:10px;display:block;cursor:pointer}
+.logo button{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;border:0;background:#d92d42;color:#fff;font-size:11px;padding:0;cursor:pointer}
+.quick.five{grid-template-columns:repeat(4,1fr);row-gap:14px}.quick.five .circ{width:54px;height:54px}.quick.five button{font-size:.82rem}
+</style>
+</head>
+<body>
+<!-- ===== SIGN-IN GATE (Google / Facebook). Paste your IDs below. Leave both empty to turn the gate off. ===== -->
+<script>
+window.CS_AUTH = {
+  google: '',      // Google "Client ID", looks like 123456-abc.apps.googleusercontent.com
+  facebook: '',    // Facebook "App ID", digits only
+  allowed: []      // optional: only these emails may enter, e.g. ['me@gmail.com']. Empty = anyone who signs in.
+};
+(function(){
+  var A=window.CS_AUTH,KEY='cs_user';
+  if(!A.google&&!A.facebook)return;                       // no IDs set: app is open
+  var user=null;try{user=JSON.parse(localStorage.getItem(KEY)||'null');}catch(_){}
+  function okEmail(e){return !A.allowed.length||(e&&A.allowed.map(function(x){return x.toLowerCase();}).indexOf(e.toLowerCase())>-1);}
+  if(user&&okEmail(user.email)){addSignOut();return;}      // already signed in on this device: go straight in
+  var css=document.createElement('style');
+  css.textContent='#csGate{position:fixed;inset:0;z-index:99999;background:#000;color:#fff;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,sans-serif;text-align:center}#csGate .box{max-width:340px;width:100%}#csGate img{width:84px;height:84px;border-radius:20px;margin-bottom:14px}#csGate h1{font-size:26px;margin:0 0 6px}#csGate p{color:#aaa;margin:0 0 22px;font-size:15px}#csGate .row{display:flex;justify-content:center;margin:10px 0}#csGate button{width:100%;max-width:300px;height:44px;border:0;border-radius:6px;font:600 15px system-ui,sans-serif;cursor:pointer}#csFb{background:#1877f2;color:#fff}#csMsg{color:#ff8a8a;font-size:14px;min-height:20px;margin-top:12px}#csSignOut{position:fixed;left:14px;bottom:14px;z-index:9998;border:0;border-radius:999px;padding:8px 14px;font:600 13px system-ui,sans-serif;background:#222;color:#ddd;opacity:.8}';
+  document.head.appendChild(css);
+  var g=document.createElement('div');g.id='csGate';
+  g.innerHTML='<div class="box"><img src="icon-192.png" alt=""><h1>CeremonyStream</h1><p>Sign in to continue. You only need to do this once on this device.</p>'+
+    (A.google?'<div class="row" id="csGoogle"></div>':'')+(A.facebook?'<div class="row"><button id="csFb">Continue with Facebook</button></div>':'')+'<div id="csMsg"></div></div>';
+  document.body.appendChild(g);
+  function msg(t){document.getElementById('csMsg').textContent=t||'';}
+  function done(u){
+    if(!okEmail(u.email)){msg('This account is not allowed to use the app.');return;}
+    try{localStorage.setItem(KEY,JSON.stringify(u));}catch(_){}
+    if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();   // ask the phone not to wipe the saved login
+    g.remove();addSignOut();
+  }
+  function addSignOut(){
+    function mk(){var b=document.createElement('button');b.id='csSignOut';b.textContent='Sign out';
+      if(!document.getElementById('csSignOutCss')){var c=document.createElement('style');c.id='csSignOutCss';c.textContent='#csSignOut{position:fixed;left:14px;bottom:14px;z-index:9998;border:0;border-radius:999px;padding:8px 14px;font:600 13px system-ui,sans-serif;background:#222;color:#ddd;opacity:.8}';document.head.appendChild(c);}
+      b.onclick=function(){if(confirm('Sign out of this device?')){try{localStorage.removeItem(KEY);}catch(_){}location.reload();}};document.body.appendChild(b);}
+    if(document.body)mk();else document.addEventListener('DOMContentLoaded',mk);
+  }
+  function load(src,cb){var t=document.createElement('script');t.src=src;t.async=true;t.onload=cb;t.onerror=function(){msg('Could not load sign-in. Check your internet and try again.');};document.head.appendChild(t);}
+  // ---- Google ----
+  if(A.google)load('https://accounts.google.com/gsi/client',function(){
+    google.accounts.id.initialize({client_id:A.google,auto_select:false,callback:function(r){
+      try{
+        var p=JSON.parse(decodeURIComponent(escape(atob(r.credential.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')))));
+        if(p.aud!==A.google||p.exp*1000<Date.now()||p.email_verified===false){msg('Sign-in failed. Try again.');return;}
+        done({provider:'google',name:p.name||'',email:p.email||'',picture:p.picture||'',ts:Date.now()});
+      }catch(e){msg('Sign-in failed. Try again.');}
+    }});
+    google.accounts.id.renderButton(document.getElementById('csGoogle'),{theme:'filled_blue',size:'large',shape:'rectangular',text:'continue_with',width:300});
+  });
+  // ---- Facebook ----
+  if(A.facebook){
+    window.fbAsyncInit=function(){FB.init({appId:A.facebook,cookie:false,xfbml:false,version:'v19.0'});};
+    load('https://connect.facebook.net/en_US/sdk.js');
+    document.addEventListener('click',function(e){
+      if(!e.target||e.target.id!=='csFb')return;
+      if(!window.FB){msg('Facebook is still loading. Try again in a moment.');return;}
+      FB.login(function(r){
+        if(!r.authResponse){msg('Facebook sign-in was cancelled.');return;}
+        FB.api('/me',{fields:'name,email,picture'},function(u){
+          if(!u||u.error){msg('Facebook sign-in failed. Try again.');return;}
+          done({provider:'facebook',name:u.name||'',email:u.email||'',picture:(u.picture&&u.picture.data&&u.picture.data.url)||'',ts:Date.now()});
+        });
+      },{scope:'public_profile,email'});
+    });
+  }
+})();
+</script>
+
+<div class="view" id="view-index" hidden>
+  <header class="site-header">
+    <div class="brand">CeremonyStream</div>
+    <div class="tagline">Share important moments, live.</div>
+  </header>
+  <main class="home">
+    <section class="hero">
+      <p class="eyebrow">LIVE EVENT STREAMING</p>
+      <h1>Bring everyone closer.</h1>
+      <p>Broadcast a ceremony from your Android phone and let family and friends watch through your website.</p>
+      <div class="actions">
+        <a class="button primary" href="?p=record">Record on this device</a>
+        <a class="button secondary" href="?p=admin">Organiser: create an event</a>
+      </div>
+    </section>
+    <section class="notice">
+      <strong>Watching or broadcasting a live event?</strong>
+      <p>Open the private link the organiser sent you. Viewers get a watch link, the person filming gets a separate broadcaster link.</p>
+    </section>
+    
+  </main>
+  <footer>© CeremonyStream · Phase 1</footer>
+  
+  
+</div>
+<div class="view" id="view-record" hidden>
+  <div class="cam">
+  <video id="record-preview" autoplay playsinline muted></video>
+  <div class="ph" id="record-videoPlaceholder"><span>Camera preview appears here</span><button id="record-camBtn" class="button primary">Enable camera</button></div>
+  <div class="top"><div class="grp"><button class="ibtn" id="record-menuBtn" aria-label="Settings">⋯</button><button class="ibtn" id="record-flipBtn" aria-label="Flip camera">⟳</button></div>
+    <div class="dots"><button data-pg="0" aria-label="Settings"></button><button class="on" data-pg="1" aria-label="Camera"></button><button data-pg="2" aria-label="My Studio"></button></div>
+    <div class="grp right"><span id="record-recBadge" class="rec-badge" hidden>● REC <b id="record-timer">00:00:00</b></span></div></div>
+  <div id="record-recover" class="panel recover" hidden><strong>Unsaved recording found</strong><p id="record-recoverText" class="muted"></p><div class="actions"><button id="record-recoverBtn" class="button primary">Save it now</button><button id="record-discardBtn" class="button secondary">Discard</button></div></div>
+  <div class="sheet" id="record-sheet" hidden>
+    <div class="quick">
+      <button id="record-micBtn"><span class="circ">🎤</span><span>Mic<br><b id="record-micLbl">on</b></span></button>
+      <button id="record-flip2" onclick="document.getElementById('record-flipBtn').click()"><span class="circ">⟳</span><span>Flip<br>camera</span></button>
+      <button id="record-fsBtn"><span class="circ">⛶</span><span>View screen<br>full</span></button>
+    </div>
+    <h3>Recording</h3>
+    <label class="item">File name<input id="record-name" value="ceremony" maxlength="40"></label>
+    <h3>Camera</h3>
+    <label class="item">Camera<select id="record-facing"><option value="environment">Back camera</option><option value="user">Front camera</option></select></label>
+    <label class="item">Quality<select id="record-quality"><option value="720">HD 720p</option><option value="1080">Full HD 1080p</option><option value="480">Data saver 480p</option></select></label>
+    <label class="item">Stabilization<input type="checkbox" class="sw stab" checked></label>
+    <h3>More</h3>
+    <a class="item" href="?p=index">← Home</a>
+  </div>
+  <div class="sheet" id="record-ovl" hidden></div>
+  <div class="sheet" id="broadcast-ovl" hidden></div>
+  <div class="bottom">
+    <div id="record-thumbs" class="thumbs"></div>
+    <p id="record-status" class="status" role="status">Enable the camera to begin.</p>
+    <div class="ctrls"><button id="record-photoBtn" class="side" disabled aria-label="Take photo">📷</button><button id="record-recBtn" class="shutter" disabled>Record</button><button id="record-pauseBtn" class="side" disabled aria-label="Pause">⏸</button></div>
+    <nav class="tabs"><a href="?p=admin">EVENTS</a><a data-live href="?p=broadcast">LIVE</a><a href="?p=record" class="on">RECORD</a></nav>
+  </div>
+</div>
+</div>
+<div class="view" id="view-broadcast" hidden>
+  <div id="broadcast-page">
+  <header class="site-header"><a class="brand" href="?p=index">CeremonyStream</a><div class="tagline">Broadcaster studio</div></header>
+  <main class="workspace">
+    <a class="back" href="?p=index">← Home</a>
+    <h1 id="broadcast-title">Go live</h1>
+    <p id="broadcast-intro" class="muted">Checking your broadcaster link…</p>
+    <div id="broadcast-gate" class="panel" hidden>
+      <strong>Broadcaster link needed</strong>
+      <p class="muted">Open the broadcaster link the organiser created for this event (from the admin page). To only record on this device, use <a href="?p=record">Record without streaming</a>.</p>
+    </div>
+  </main>
+  </div>
+  <div class="cam" id="broadcast-studio" hidden>
+  <video id="broadcast-preview" autoplay playsinline muted></video>
+  <div class="ph" id="broadcast-videoPlaceholder"><span>Camera preview appears here</span><button id="broadcast-previewBtn" class="button primary">Enable camera</button></div>
+  <div class="top"><div class="grp"><button class="ibtn" id="broadcast-menuBtn" aria-label="Settings">⋯</button><button class="ibtn" id="broadcast-flipBtn" aria-label="Flip camera">⟳</button></div>
+    <div class="dots"><button data-pg="0" aria-label="Settings"></button><button class="on" data-pg="1" aria-label="Camera"></button><button data-pg="2" aria-label="My Studio"></button></div>
+    <div class="grp right"><span id="broadcast-recBadge" class="rec-badge" hidden>● REC <b id="broadcast-timer">00:00:00</b></span></div></div>
+  
+  <div class="sheet" id="broadcast-sheet" hidden>
+    <div class="quick">
+      <button id="broadcast-micBtn"><span class="circ">🎤</span><span>Mic<br><b id="broadcast-micLbl">on</b></span></button>
+      <button id="broadcast-flip2" onclick="document.getElementById('broadcast-flipBtn').click()"><span class="circ">⟳</span><span>Flip<br>camera</span></button>
+      <button id="broadcast-fsBtn"><span class="circ">⛶</span><span>View screen<br>full</span></button>
+    </div>
+    <h3>Live</h3>
+    <label class="item">Save video after streaming<input type="checkbox" class="sw" id="broadcast-saveCopy" checked></label>
+    <h3>Camera</h3>
+    <label class="item">Camera<select id="broadcast-facing"><option value="environment">Back camera</option><option value="user">Front camera</option></select></label>
+    <label class="item">Quality<select id="broadcast-quality"><option value="720">HD 720p</option><option value="480">Data saver 480p</option><option value="1080">Full HD 1080p</option></select></label>
+    <label class="item">Stabilization<input type="checkbox" class="sw stab" checked></label>
+    <h3>More</h3>
+    <a class="item" href="?p=index">← Home</a>
+  </div>
+  <div class="bottom">
+    <div id="broadcast-thumbs" class="thumbs"></div>
+    <div id="broadcast-dest" hidden>
+      <style>#broadcast-dest{padding:8px 12px 0;text-align:center}#broadcast-dest .drow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}#broadcast-dest button{border:0;border-radius:999px;padding:10px 14px;font:700 14px system-ui,sans-serif;background:#2a2a2a;color:#fff}#broadcast-dest button.on{background:#1f7a3a}#broadcast-dest #broadcast-ytBtn:not(.on){background:#c4302b}#broadcast-dest #broadcast-fbBtn:not(.on){background:#1877f2}#broadcast-dest .dnote{font-size:13px;color:#bbb;margin:6px 0 2px}#broadcast-dest select{background:#222;color:#fff;border:0;border-radius:8px;padding:6px}</style>
+      <div class="drow"><button id="broadcast-ytBtn" type="button">Connect YouTube</button><button id="broadcast-fbBtn" type="button">Connect Facebook Page</button></div>
+      <label class="dnote" id="broadcast-ytPrivWrap" hidden>YouTube visibility: <select id="broadcast-ytPrivacy"><option value="public">Public</option><option value="unlisted">Unlisted</option><option value="private">Private</option></select></label>
+      <p class="dnote" id="broadcast-destNote">Connect at least one account to go live.</p>
+    </div>
+    <p id="broadcast-status" class="status" role="status">Not connected.</p>
+    <div class="ctrls"><button id="broadcast-photoBtn" class="side" disabled aria-label="Take photo">📷</button><button id="broadcast-goLiveBtn" class="shutter" disabled>Go Live</button><button id="broadcast-stopBtn" class="side" disabled aria-label="Stop">■</button></div>
+    <nav class="tabs"><a href="?p=admin">EVENTS</a><a data-live href="?p=broadcast" class="on">LIVE</a><a href="?p=record">RECORD</a></nav>
+  </div>
+</div>
+</div>
+<div class="view" id="view-watch" hidden>
+  <header class="site-header"><a class="brand" href="?p=index">CeremonyStream</a><div class="tagline">Live viewer</div></header>
+  <main class="workspace">
+    <h1 id="watch-title">Watch a ceremony</h1>
+    <p id="watch-intro" class="muted">Loading…</p>
+    <div id="watch-gate" class="panel" hidden><strong>Viewer link needed</strong><p class="muted">Open the viewer link you were sent by the organiser.</p></div>
+    <div id="watch-viewer" class="panel" hidden>
+      <video id="watch-player" controls autoplay playsinline></video>
+      <p id="watch-status" class="status" role="status">Connecting…</p>
+      <div class="actions"><button id="watch-retryBtn" class="button secondary">Reload stream</button></div>
+    </div>
+  </main>
+  <footer>Playback can be a few seconds behind the live event.</footer>
+  
+  
+  
+</div>
+<div class="view" id="view-admin" hidden>
+  <header class="site-header"><a class="brand" href="?p=index">CeremonyStream</a><div class="tagline">Create an event</div></header>
+  <main class="workspace">
+    <h1>Events</h1>
+    <div id="admin-app">
+      <div class="panel">
+        <h2>New event</h2>
+        <label for="admin-evTitle">Event title</label>
+        <input id="admin-evTitle" value="Live Ceremony" maxlength="100">
+        <label for="admin-evHours">Links stay valid for (hours)</label>
+        <input id="admin-evHours" type="number" min="1" max="720" value="72">
+        <div class="actions"><button id="admin-createBtn" class="button primary">Create event</button></div>
+      </div>
+      <div id="admin-list"></div>
+    </div>
+  </main>
+  <footer>Anyone with a link can use it. Share the broadcaster link only with the person filming. Events are remembered on this device only: save the links you need.</footer>
+  
+  
+  
+</div>
+<script>
+// Where the streaming server lives (the machine running docker compose).
+// Leave '' if this website is served by that same server.
+// For GitHub Pages, set your server's address, e.g. 'https://live.example.com' (no trailing slash).
+// Recording on the device (record.html) works without any server.
+window.CS_SERVER = '';
+// Address of your relay (Cloudflare Worker) that forwards the live video to YouTube / Facebook.
+// Example: 'https://ceremonystream-relay.yourname.workers.dev'  (no slash at the end). Leave empty to use the event-link mode.
+window.CS_RELAY = '';
+
+</script>
+<script>
+window.ensureHls = () => new Promise((resolve) => {
+  if (window.Hls) return resolve();
+  const s = document.createElement('script'); s.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js';
+  s.onload = s.onerror = () => resolve(); document.head.appendChild(s);
+});
+
+// Shared helpers: camera, local recording (auto-saved to the device), photos.
+// Recording chunks are written to IndexedDB while recording, so if the tab
+// crashes or the battery dies the footage can be recovered on next visit.
+const CSRec = (() => {
+  let rec = null, sid = null, idx = 0, mime = '', prefix = 'ceremony', startedAt = 0, pausedMs = 0, pausedAt = 0;
+  let memChunks = null, db = null, wake = null;
+
+  const pad = (n) => String(n).padStart(2, '0');
+  function stamp() { const d = new Date(); return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`; }
+  function pickMime() {
+    const list = ['video/mp4;codecs=avc1,mp4a.40.2', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+    return list.find((m) => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || '';
+  }
+  const extFor = (m) => (m.startsWith('video/mp4') ? 'mp4' : 'webm');
+
+  function openDb() {
+    if (db) return Promise.resolve(db);
+    return new Promise((resolve) => {
+      try {
+        const r = indexedDB.open('ceremonystream-rec', 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('chunks', { keyPath: ['sid', 'i'] });
+        r.onsuccess = () => { db = r.result; resolve(db); };
+        r.onerror = () => resolve(null);
+      } catch (_) { resolve(null); }
+    });
+  }
+  const tx = (mode) => db.transaction('chunks', mode).objectStore('chunks');
+  const wait = (req) => new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); });
+
+  async function putChunk(blob) {
+    const i = idx++;
+    if (db) { try { await wait(tx('readwrite').put({ sid, i, blob, mime, prefix })); return; } catch (_) {} }
+    (memChunks = memChunks || []).push(blob);
+  }
+  async function readChunks(id) {
+    if (!db) return [];
+    const all = await wait(tx('readonly').getAll(IDBKeyRange.bound([id, 0], [id, Infinity])));
+    return all;
+  }
+  async function clear(id) { if (db) { try { await wait(tx('readwrite').delete(IDBKeyRange.bound([id, 0], [id, Infinity]))); } catch (_) {} } }
+
+  function download(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name; a.style.display = 'none';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+
+  async function lockScreen() { try { if (navigator.wakeLock) wake = await navigator.wakeLock.request('screen'); } catch (_) {} }
+  function unlockScreen() { try { if (wake) wake.release(); } catch (_) {} wake = null; }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && rec && rec.state !== 'inactive') lockScreen(); });
+
+  async function openCamera({ facing = 'environment', height = 720 } = {}) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('Camera access needs a secure (HTTPS) page in a supported browser.');
+    }
+    return navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true },
+      video: { facingMode: { ideal: facing }, width: { ideal: Math.round(height * 16 / 9) }, height: { ideal: height } }
+    });
+  }
+
+  async function start(stream, opts = {}) {
+    if (!window.MediaRecorder) throw new Error('This browser cannot record video.');
+    if (rec && rec.state !== 'inactive') throw new Error('Already recording.');
+    await openDb();
+    prefix = opts.prefix || 'ceremony'; mime = pickMime(); sid = String(Date.now()); idx = 0; memChunks = null;
+    pausedMs = 0; pausedAt = 0;
+    rec = new MediaRecorder(stream, Object.assign({ videoBitsPerSecond: 2500000, audioBitsPerSecond: 128000 }, mime ? { mimeType: mime } : {}));
+    mime = rec.mimeType || mime || 'video/webm';
+    let chain = Promise.resolve();
+    rec.ondataavailable = (e) => { if (e.data && e.data.size) chain = chain.then(() => putChunk(e.data)); };
+    rec._done = new Promise((resolve) => { rec.onstop = () => chain.then(resolve); });
+    rec.onerror = (e) => opts.onError && opts.onError(e.error || e);
+    rec.start(1000);
+    startedAt = Date.now();
+    lockScreen();
+  }
+
+  // Stops, assembles the file and saves it to the device's Downloads. Returns {name,size}.
+  async function stop() {
+    if (!rec || rec.state === 'inactive') return null;
+    const id = sid, m = mime, pre = prefix;
+    rec.stop();
+    await rec._done;
+    unlockScreen();
+    let parts;
+    if (memChunks && !db) parts = memChunks; else parts = (await readChunks(id)).map((c) => c.blob).concat(memChunks || []);
+    rec = null;
+    if (!parts.length) return null;
+    const blob = new Blob(parts, { type: m.split(';')[0] });
+    const name = `${pre}-${stamp()}.${extFor(m)}`;
+    download(blob, name);
+    // keep the backup a little while so a failed download can be recovered
+    setTimeout(() => clear(id), 120000);
+    return { name, size: blob.size };
+  }
+
+  function pause() { if (rec && rec.state === 'recording') { rec.pause(); pausedAt = Date.now(); } }
+  function resume() { if (rec && rec.state === 'paused') { rec.resume(); pausedMs += Date.now() - pausedAt; pausedAt = 0; } }
+  const state = () => (rec ? rec.state : 'inactive');
+  function elapsed() {
+    if (!rec) return 0;
+    return Math.max(0, Date.now() - startedAt - pausedMs - (pausedAt ? Date.now() - pausedAt : 0));
+  }
+  function fmt(ms) { const s = Math.floor(ms / 1000); return `${pad(Math.floor(s / 3600))}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}`; }
+
+  // Unsaved footage from a previous session (crash, closed tab). Returns session info or null.
+  async function leftover() {
+    await openDb(); if (!db) return null;
+    const all = await wait(tx('readonly').getAll());
+    const mine = rec ? sid : null;
+    const groups = {};
+    all.forEach((c) => { if (c.sid !== mine) (groups[c.sid] = groups[c.sid] || []).push(c); });
+    const ids = Object.keys(groups).sort();
+    if (!ids.length) return null;
+    const id = ids[ids.length - 1], g = groups[id];
+    return { sid: id, count: g.length, size: g.reduce((n, c) => n + c.blob.size, 0), mime: g[0].mime, prefix: g[0].prefix, others: ids.slice(0, -1) };
+  }
+  async function recover(info) {
+    const chunks = await readChunks(info.sid);
+    const blob = new Blob(chunks.map((c) => c.blob), { type: info.mime.split(';')[0] });
+    const name = `${info.prefix}-recovered-${info.sid}.${extFor(info.mime)}`;
+    download(blob, name);
+    setTimeout(() => clear(info.sid), 120000);
+    return { name, size: blob.size };
+  }
+  async function discard(info) { await clear(info.sid); for (const o of info.others || []) await clear(o); }
+
+  // Photo from the live preview <video>. Saved to the device immediately.
+  function photo(video, pre) {
+    return new Promise((resolve, reject) => {
+      const w = video.videoWidth, h = video.videoHeight;
+      if (!w || !h) return reject(new Error('Camera is not ready yet.'));
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(video, 0, 0, w, h);
+      c.toBlob((blob) => {
+        if (!blob) return reject(new Error('Could not capture photo.'));
+        const name = `${pre || 'photo'}-${stamp()}.jpg`;
+        download(blob, name);
+        resolve({ name, blob });
+      }, 'image/jpeg', 0.92);
+    });
+  }
+
+  function flash(el) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+  function addThumb(container, blob) {
+    const img = document.createElement('img'); img.src = URL.createObjectURL(blob); img.alt = 'Captured photo';
+    img.onload = () => URL.revokeObjectURL(img.src);
+    container.prepend(img);
+    while (container.children.length > 12) container.lastChild.remove();
+  }
+  const size = (n) => (n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.round(n / 1024) + ' KB');
+
+  return { openCamera, start, stop, pause, resume, state, elapsed, fmt, leftover, recover, discard, photo, flash, addThumb, size };
+})();
+
+</script>
+<script>
+function page_record() {
+const $ = (id) => document.getElementById('record-' + id);
+const preview = $('preview'), statusEl = $('status');
+let stream = null, tick = null;
+const status = (m, k = '') => { statusEl.textContent = m; statusEl.className = 'status ' + k; };
+
+async function enableCamera() {
+  try {
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+    stream = await Studio.attach(await CSRec.openCamera({ facing: $('facing').value, height: Number($('quality').value) }));
+    preview.srcObject = stream;
+    $('videoPlaceholder').hidden = true;
+    $('recBtn').disabled = false; $('photoBtn').disabled = false;
+    $('camBtn').textContent = 'Restart camera';
+    status('Camera ready.', 'success');
+  } catch (e) {
+    const why = !window.isSecureContext
+      ? 'The camera is blocked because this page was not opened from a secure (https) link. Open the app from its https address (for example your GitHub Pages link) or install it from there.'
+      : (e.name === 'NotAllowedError' ? 'Camera permission was denied. Allow camera and microphone for this site in your browser settings, then tap Enable camera.' : e.message);
+    status('Could not open the camera: ' + why, 'error');
+  }
+}
+
+async function startRec() {
+  try {
+    await CSRec.start(stream, { prefix: ($('name').value.trim().replace(/[^A-Za-z0-9_-]/g, '') || 'ceremony'), onError: (e) => status('Recording error: ' + e.message, 'error') });
+  } catch (e) { return status(e.message, 'error'); }
+  setRecordingUi(true);
+  tick = setInterval(() => { $('timer').textContent = CSRec.fmt(CSRec.elapsed()); }, 500);
+  status('Recording…', 'success');
+}
+async function stopRec() {
+  clearInterval(tick);
+  $('recBtn').disabled = true;
+  const r = await CSRec.stop();
+  setRecordingUi(false);
+  $('recBtn').disabled = false;
+  status(r ? `Saved to this device: ${r.name} (${CSRec.size(r.size)}). Check your Downloads folder.` : 'Nothing was recorded.', r ? 'success' : 'error');
+}
+function setRecordingUi(on) {
+  $('recBadge').hidden = !on;
+  $('recBtn').textContent = on ? 'Stop' : 'Record';
+  $('recBtn').className = 'shutter' + (on ? ' live' : '');
+  $('pauseBtn').disabled = !on; $('pauseBtn').textContent = '⏸';
+  ['facing', 'quality', 'camBtn', 'name'].forEach((id) => { $(id).disabled = on; });
+}
+
+$('camBtn').onclick = enableCamera;
+enableCamera(); // open the camera as soon as the page opens
+$('recBtn').onclick = () => (CSRec.state() === 'inactive' ? startRec() : stopRec());
+$('pauseBtn').onclick = () => {
+  if (CSRec.state() === 'recording') { CSRec.pause(); $('pauseBtn').textContent = '▶'; status('Paused.'); }
+  else { CSRec.resume(); $('pauseBtn').textContent = '⏸'; status('Recording…', 'success'); }
+};
+$('photoBtn').onclick = async () => {
+  try {
+    const p = await CSRec.photo(preview, ($('name').value.trim().replace(/[^A-Za-z0-9_-]/g, '') || 'ceremony') + '-photo');
+    CSRec.flash(preview); CSRec.addThumb($('thumbs'), p.blob);
+    status('Photo saved to this device: ' + p.name, 'success');
+  } catch (e) { status(e.message, 'error'); }
+};
+$('facing').onchange = $('quality').onchange = () => { if (stream && CSRec.state() === 'inactive') enableCamera(); };
+
+window.addEventListener('beforeunload', (e) => { if (CSRec.state() !== 'inactive') { e.preventDefault(); e.returnValue = ''; } });
+
+CSRec.leftover().then((info) => {
+  if (!info) return;
+  $('recover').hidden = false;
+  $('recoverText').textContent = `A recording (${CSRec.size(info.size)}) was not saved last time, for example because the page closed. You can save it now.`;
+  $('recoverBtn').onclick = async () => { const r = await CSRec.recover(info); $('recover').hidden = true; status('Recovered and saved: ' + r.name, 'success'); };
+  $('discardBtn').onclick = async () => { await CSRec.discard(info); $('recover').hidden = true; };
+}).catch(() => {});
+
+}
+function page_broadcast() {
+const $ = (id) => document.getElementById('broadcast-' + id);
+const preview = $('preview');
+const token = new URLSearchParams(location.hash.slice(1)).get('t') || '';
+const authHeader = { Authorization: 'Bearer ' + token };
+let noH264 = false, ev = null, mediaStream = null, peer = null, resource = null, wantLive = false, reconnecting = false, tick = null;
+
+// ===== Stream to YouTube / Facebook through the relay (only active when CS_RELAY is set) =====
+const RELAY = (window.CS_RELAY || '').replace(/\/$/, ''), SOCIAL = !!RELAY;
+const dest = { youtube: null, facebook: null };
+let relaySession = null, endJobs = [];
+const connectedCount = () => (dest.youtube ? 1 : 0) + (dest.facebook ? 1 : 0);
+function refreshGoLive() { $('goLiveBtn').disabled = !(mediaStream && !wantLive && (!SOCIAL || connectedCount() > 0)); }
+function renderDest() {
+  $('ytBtn').textContent = dest.youtube ? '✓ YouTube: ' + dest.youtube.label : 'Connect YouTube';
+  $('ytBtn').classList.toggle('on', !!dest.youtube);
+  $('fbBtn').textContent = dest.facebook ? '✓ Facebook: ' + dest.facebook.label : 'Connect Facebook Page';
+  $('fbBtn').classList.toggle('on', !!dest.facebook);
+  $('ytPrivWrap').hidden = !dest.youtube;
+  const names = [dest.youtube && 'YouTube', dest.facebook && 'Facebook'].filter(Boolean);
+  $('destNote').textContent = names.length ? 'Go Live will stream to: ' + names.join(' + ') + '. Tap a button again to reconnect.' : 'Connect at least one account to go live.';
+  refreshGoLive();
+}
+const waitFor = (fn, ms = 8000) => new Promise((res, rej) => { const t0 = Date.now(); (function k() { if (fn()) return res(); if (Date.now() - t0 > ms) return rej(new Error('Could not load the sign-in library. Check your internet.')); setTimeout(k, 150); })(); });
+function loadScript(src) { return new Promise((res, rej) => { if (document.querySelector('script[src="' + src + '"]')) return res(); const e = document.createElement('script'); e.src = src; e.async = true; e.onload = res; e.onerror = () => rej(new Error('Could not load ' + src)); document.head.appendChild(e); }); }
+async function connectYouTube() {
+  const cid = (window.CS_AUTH || {}).google;
+  if (!cid) throw new Error('Add your Google Client ID in index.html (CS_AUTH.google) first.');
+  await loadScript('https://accounts.google.com/gsi/client');
+  await waitFor(() => window.google && google.accounts && google.accounts.oauth2);
+  const tok = await new Promise((res, rej) => {
+    google.accounts.oauth2.initTokenClient({
+      client_id: cid, scope: 'https://www.googleapis.com/auth/youtube',
+      callback: (r) => (r.error ? rej(new Error(r.error_description || r.error)) : res(r)),
+      error_callback: (e) => rej(new Error('YouTube connection cancelled' + (e && e.type ? ' (' + e.type + ')' : '')))
+    }).requestAccessToken();
+  });
+  const r = await fetch('https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true', { headers: { Authorization: 'Bearer ' + tok.access_token } });
+  const d = await r.json();
+  if (!r.ok) throw new Error((d.error && d.error.message) || 'YouTube refused the connection.');
+  if (!d.items || !d.items.length) throw new Error('This Google account has no YouTube channel.');
+  dest.youtube = { token: tok.access_token, exp: Date.now() + (Number(tok.expires_in) || 3600) * 1000 - 120000, label: d.items[0].snippet.title };
+}
+function fbApi(path, method, params) { return new Promise((res, rej) => FB.api(path, method || 'get', params || {}, (r) => (!r || r.error ? rej(new Error((r && r.error && r.error.message) || 'Facebook error')) : res(r)))); }
+async function connectFacebook() {
+  const aid = (window.CS_AUTH || {}).facebook;
+  if (!aid) throw new Error('Add your Facebook App ID in index.html (CS_AUTH.facebook) first.');
+  if (!window.FB) await new Promise((res, rej) => { window.fbAsyncInit = res; const e = document.createElement('script'); e.src = 'https://connect.facebook.net/en_US/sdk.js'; e.async = true; e.onerror = () => rej(new Error('Could not load Facebook. Check your internet.')); document.head.appendChild(e); });
+  FB.init({ appId: aid, cookie: false, xfbml: false, version: 'v19.0' });
+  const auth = await new Promise((res, rej) => FB.login((r) => (r.authResponse ? res(r.authResponse) : rej(new Error('Facebook connection cancelled.'))), { scope: 'pages_show_list,pages_manage_posts,pages_read_engagement,publish_video' }));
+  const pages = await fbApi('/me/accounts', 'get', { fields: 'name,access_token' });
+  if (!pages.data || !pages.data.length) throw new Error('No Facebook Page found. Going live from Facebook needs a Page you manage.');
+  let pg = pages.data[0];
+  if (pages.data.length > 1) {
+    const n = Number(prompt('Which Page do you want to go live on?\n' + pages.data.map((x, i) => (i + 1) + '. ' + x.name).join('\n') + '\nType the number:', '1'));
+    pg = pages.data[n - 1]; if (!pg) throw new Error('No Page chosen.');
+  }
+  dest.facebook = { pageId: pg.id, token: pg.access_token, userToken: auth.accessToken, label: pg.name };
+}
+async function ytCreate(title) {
+  const H = { Authorization: 'Bearer ' + dest.youtube.token, 'Content-Type': 'application/json' };
+  const api = async (p, o) => { const r = await fetch('https://www.googleapis.com/youtube/v3/' + p, Object.assign({ headers: H }, o)); const d = await r.json(); if (!r.ok) throw new Error('YouTube: ' + ((d.error && d.error.message) || r.status)); return d; };
+  const b = await api('liveBroadcasts?part=snippet,status,contentDetails', { method: 'POST', body: JSON.stringify({ snippet: { title, scheduledStartTime: new Date().toISOString() }, status: { privacyStatus: $('ytPrivacy').value, selfDeclaredMadeForKids: false }, contentDetails: { enableAutoStart: true, enableAutoStop: true } }) });
+  const st = await api('liveStreams?part=snippet,cdn', { method: 'POST', body: JSON.stringify({ snippet: { title }, cdn: { ingestionType: 'rtmp', resolution: 'variable', frameRate: 'variable' } }) });
+  await api('liveBroadcasts/bind?part=id&id=' + b.id + '&streamId=' + st.id, { method: 'POST' });
+  const ing = st.cdn.ingestionInfo;
+  endJobs.push(() => api('liveBroadcasts/transition?part=status&broadcastStatus=complete&id=' + b.id, { method: 'POST' }));
+  return { name: 'YouTube', url: ing.ingestionAddress, key: ing.streamName };
+}
+async function fbCreate(title) {
+  const d = await fbApi('/' + dest.facebook.pageId + '/live_videos', 'post', { status: 'LIVE_NOW', title, access_token: dest.facebook.token });
+  if (!d.secure_stream_url) throw new Error('Facebook did not return a stream address.');
+  endJobs.push(() => fbApi('/' + d.id, 'post', { end_live_video: true, access_token: dest.facebook.token }));
+  const i = d.secure_stream_url.lastIndexOf('/');
+  return { name: 'Facebook', url: d.secure_stream_url.slice(0, i + 1), key: d.secure_stream_url.slice(i + 1) };
+}
+const relayAuth = () => dest.youtube ? { Authorization: 'Bearer ' + dest.youtube.token, 'X-Provider': 'google' } : { Authorization: 'Bearer ' + dest.facebook.userToken, 'X-Provider': 'facebook' };
+async function startSocial() {
+  const title = 'Live ceremony ' + new Date().toLocaleDateString();
+  if (dest.youtube && Date.now() > dest.youtube.exp) { status('YouTube sign-in expired, reconnecting…'); await connectYouTube(); renderDest(); }
+  endJobs = []; const outs = [];
+  if (dest.youtube) { status('Creating YouTube live broadcast…'); outs.push(await ytCreate(title)); }
+  if (dest.facebook) { status('Creating Facebook live video…'); outs.push(await fbCreate(title)); }
+  status('Connecting to relay…');
+  const r = await fetch(RELAY + '/start', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, relayAuth()), body: JSON.stringify({ destinations: outs }) });
+  let d = {}; try { d = await r.json(); } catch (_) {}
+  if (!r.ok || !d.whipUrl) throw new Error(d.error || 'Relay returned HTTP ' + r.status);
+  relaySession = d;
+}
+async function endSocial() {
+  const sid = relaySession && relaySession.sessionId, jobs = endJobs; relaySession = null; endJobs = [];
+  if (sid) { try { await fetch(RELAY + '/stop', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, relayAuth()), body: JSON.stringify({ sessionId: sid }) }); } catch (_) {} }
+  for (const j of jobs) { try { await j(); } catch (_) {} }
+}
+
+
+const status = (m, k = '') => { $('status').textContent = m; $('status').className = 'status ' + k; };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function waitForIce(pc) {
+  if (pc.iceGatheringState === 'complete') return Promise.resolve();
+  return new Promise((resolve) => {
+    const t = setTimeout(done, 6000);
+    function done() { clearTimeout(t); pc.removeEventListener('icegatheringstatechange', check); resolve(); }
+    function check() { if (pc.iceGatheringState === 'complete') done(); }
+    pc.addEventListener('icegatheringstatechange', check);
+  });
+}
+
+async function init() {
+  if (SOCIAL) {
+    ev = { path: 'live', title: 'Live broadcast', role: 'publish' };
+    $('title').textContent = 'Go live';
+    $('intro').textContent = 'Allow camera and microphone access, connect YouTube or Facebook, then go live.';
+    $('studio').hidden = false; document.getElementById('broadcast-page').hidden = true;
+    $('dest').hidden = false;
+    $('ytBtn').onclick = async () => { try { status('Opening YouTube sign-in…'); await connectYouTube(); renderDest(); status('YouTube connected: ' + dest.youtube.label, 'success'); } catch (e) { status(e.message, 'error'); } };
+    $('fbBtn').onclick = async () => { try { status('Opening Facebook sign-in…'); await connectFacebook(); renderDest(); status('Facebook connected: ' + dest.facebook.label, 'success'); } catch (e) { status(e.message, 'error'); } };
+    renderDest();
+    return;
+  }
+  if (!token) { $('intro').textContent = ''; $('gate').hidden = false; return; }
+  try {
+    const r = await fetch(CS_SERVER + '/api/event', { headers: authHeader });
+    if (!r.ok) throw new Error((await r.json()).error || 'Invalid link');
+    ev = await r.json();
+    if (ev.role !== 'publish') throw new Error('This is a viewer link. Use the broadcaster link instead.');
+    $('title').textContent = ev.title;
+    $('intro').textContent = 'Allow camera and microphone access, then go live.';
+    $('studio').hidden = false; document.getElementById('broadcast-page').hidden = true;
+  } catch (e) { $('intro').textContent = ''; $('gate').hidden = false; $('gate').querySelector('p').textContent = e.message; }
+}
+
+async function enableCamera() {
+  try {
+    if (mediaStream) mediaStream.getTracks().forEach((t) => t.stop());
+    mediaStream = await Studio.attach(await CSRec.openCamera({ facing: $('facing').value, height: Number($('quality').value) }));
+    preview.srcObject = mediaStream;
+    $('videoPlaceholder').hidden = true;
+    $('photoBtn').disabled = false; refreshGoLive();
+    $('previewBtn').textContent = 'Restart camera';
+    status('Camera and microphone are ready.', 'success');
+  } catch (e) { status('Could not access camera/microphone: ' + e.message, 'error'); }
+}
+
+async function iceServers() {
+  if (SOCIAL) return [{ urls: 'stun:stun.cloudflare.com:3478' }];
+  try { const r = await fetch(CS_SERVER + '/api/ice', { headers: authHeader }); if (r.ok) return (await r.json()).iceServers; } catch (_) {}
+  return [];
+}
+
+// One WHIP session. Throws on failure.
+async function connect() {
+  const pc = new RTCPeerConnection({ iceServers: await iceServers() });
+  peer = pc;
+  mediaStream.getTracks().forEach((t) => pc.addTrack(t, mediaStream));
+  // HLS viewers can only play H.264 video, so publish H.264 (VP8/VP9 would give viewers sound but no picture).
+  noH264 = false;
+  try {
+    const caps = RTCRtpSender.getCapabilities('video').codecs;
+    const h264 = caps.filter((c) => /h264/i.test(c.mimeType));
+    if (h264.length) pc.getTransceivers().filter((t) => t.sender.track && t.sender.track.kind === 'video').forEach((t) => t.setCodecPreferences(h264));
+    else noH264 = true;
+  } catch (_) {}
+  // prefer a sensible video bitrate for phones
+  pc.getSenders().filter((s) => s.track && s.track.kind === 'video').forEach((s) => {
+    const p = s.getParameters(); p.encodings = p.encodings && p.encodings.length ? p.encodings : [{}];
+    p.encodings[0].maxBitrate = 2500000; s.setParameters(p).catch(() => {});
+  });
+  pc.onconnectionstatechange = () => onState(pc);
+  await pc.setLocalDescription(await pc.createOffer());
+  await waitForIce(pc);
+  const url = SOCIAL ? relaySession.whipUrl : `${CS_SERVER}/whip/${encodeURIComponent(ev.path)}/whip`;
+  const res = await fetch(url, { method: 'POST', headers: SOCIAL ? { 'Content-Type': 'application/sdp' } : Object.assign({ 'Content-Type': 'application/sdp' }, authHeader), body: pc.localDescription.sdp });
+  if (res.status === 401) throw new Error('This broadcaster link is not valid any more.');
+  if (!res.ok) throw new Error('Streaming server returned HTTP ' + res.status);
+  const loc = res.headers.get('Location');
+  // Session id is the last path segment; rebuild the URL on our own /whip route
+  resource = SOCIAL ? (loc ? new URL(loc, url).href : null) : (loc ? `${CS_SERVER}/whip/${encodeURIComponent(ev.path)}/whip/${loc.split('/').filter(Boolean).pop()}` : null);
+  await pc.setRemoteDescription({ type: 'answer', sdp: await res.text() });
+}
+
+function onState(pc) {
+  if (pc !== peer || !wantLive) return;
+  const s = pc.connectionState;
+  if (s === 'connected') { reconnecting = false; status('LIVE — ' + ev.title + (noH264 ? ' (warning: this browser cannot send H.264, viewers may see no picture)' : ''), noH264 ? 'error' : 'success'); }
+  if (s === 'failed' || s === 'closed') reconnect();
+  if (s === 'disconnected') { status('Connection unstable… trying to recover', 'error'); setTimeout(() => { if (pc === peer && pc.connectionState === 'disconnected') reconnect(); }, 5000); }
+}
+
+async function release() {
+  const old = peer, res = resource; peer = null; resource = null;
+  if (res) { try { await fetch(res, { method: 'DELETE', headers: SOCIAL ? {} : authHeader, keepalive: true }); } catch (_) {} }
+  if (old) { try { old.close(); } catch (_) {} }
+}
+
+// Re-publish with the same camera; local recording is not interrupted.
+async function reconnect() {
+  if (reconnecting || !wantLive) return;
+  reconnecting = true;
+  await release();
+  for (let attempt = 1; wantLive && attempt <= 12; attempt++) {
+    status(`Reconnecting (attempt ${attempt})…`, 'error');
+    try { await connect(); reconnecting = false; return; }
+    catch (e) { await release(); await sleep(Math.min(2000 * attempt, 10000)); }
+  }
+  reconnecting = false;
+  if (wantLive) status('Lost connection to the server. Press Stop, check your network, then Go Live again.', 'error');
+}
+
+async function goLive() {
+  if (!mediaStream) return status('Enable the camera first.', 'error');
+  if (SOCIAL && !connectedCount()) return status('Connect YouTube or Facebook first.', 'error');
+  $('goLiveBtn').disabled = true; status('Connecting to streaming server…');
+  wantLive = true;
+  try { if (SOCIAL) await startSocial(); await connect(); }
+  catch (e) { wantLive = false; await release(); if (SOCIAL) await endSocial(); refreshGoLive(); return status('Could not go live: ' + e.message, 'error'); }
+  $('stopBtn').disabled = false;
+  ['facing', 'quality', 'previewBtn'].forEach((id) => { $(id).disabled = true; });
+  if ($('saveCopy').checked) {
+    try {
+      await CSRec.start(mediaStream, { prefix: 'broadcast-' + ev.path, onError: (er) => status('Local copy error: ' + er.message, 'error') });
+      $('recBadge').hidden = false;
+      tick = setInterval(() => { $('timer').textContent = CSRec.fmt(CSRec.elapsed()); }, 500);
+    } catch (e) { status('LIVE, but the local copy could not start: ' + e.message, 'error'); }
+  }
+  $('saveCopy').disabled = true;
+}
+
+async function stopLive() {
+  wantLive = false; $('stopBtn').disabled = true;
+  clearInterval(tick); $('recBadge').hidden = true;
+  await release();                                   // WHIP DELETE: ends the session on the server
+  if (SOCIAL) await endSocial();                     // closes the YouTube / Facebook broadcasts
+  let saved = null;
+  try { saved = await CSRec.stop(); } catch (_) {}   // auto-saves the local copy
+  if (mediaStream) mediaStream.getTracks().forEach((t) => t.stop());
+  mediaStream = null; preview.srcObject = null;
+  $('videoPlaceholder').hidden = false;
+  $('goLiveBtn').disabled = true; $('photoBtn').disabled = true;
+  ['facing', 'quality', 'previewBtn', 'saveCopy'].forEach((id) => { $(id).disabled = false; });
+  $('previewBtn').textContent = 'Enable camera';
+  status('Broadcast ended.' + (saved ? ` A copy was saved to this device: ${saved.name} (${CSRec.size(saved.size)}).` : ''), 'success');
+}
+
+$('previewBtn').onclick = enableCamera;
+$('goLiveBtn').onclick = goLive;
+$('stopBtn').onclick = stopLive;
+$('photoBtn').onclick = async () => {
+  try { const p = await CSRec.photo(preview, 'photo-' + ev.path); CSRec.flash(preview); CSRec.addThumb($('thumbs'), p.blob); status('Photo saved to this device: ' + p.name, 'success'); }
+  catch (e) { status(e.message, 'error'); }
+};
+$('facing').onchange = $('quality').onchange = () => { if (mediaStream && !wantLive) enableCamera(); };
+window.addEventListener('beforeunload', (e) => {
+  if (wantLive) { e.preventDefault(); e.returnValue = ''; }
+});
+window.addEventListener('pagehide', () => { if (resource) fetch(resource, { method: 'DELETE', headers: authHeader, keepalive: true }); });
+init();
+
+}
+function page_watch() {
+const $ = (id) => document.getElementById('watch-' + id);
+const player = $('player');
+const token = new URLSearchParams(location.hash.slice(1)).get('t') || '';
+let hls = null, ev = null, retryTimer = null;
+const status = (m, k = '') => { $('status').textContent = m; $('status').className = 'status ' + k; };
+
+function load() {
+  clearTimeout(retryTimer);
+  if (hls) { hls.destroy(); hls = null; }
+  const url = `${CS_SERVER}/hls/${encodeURIComponent(ev.path)}/index.m3u8`;
+  status('Connecting to live stream…');
+  if (window.Hls && Hls.isSupported()) {
+    hls = new Hls({
+      lowLatencyMode: true,
+      // every playlist/segment request carries the viewer token
+      xhrSetup: (xhr) => xhr.setRequestHeader('Authorization', 'Bearer ' + token),
+      fetchSetup: (ctx, init) => { init.headers = Object.assign({}, init.headers, { Authorization: 'Bearer ' + token }); return new Request(ctx.url, init); }
+    });
+    hls.loadSource(url); hls.attachMedia(player);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => { player.play().catch(() => {}); status('Live', 'success'); });
+    hls.on(Hls.Events.ERROR, (_e, d) => {
+      if (!d.fatal) return;
+      status('Waiting for the broadcast to start… (retrying)', '');
+      retryTimer = setTimeout(load, 5000);
+    });
+  } else if (player.canPlayType('application/vnd.apple.mpegurl')) {
+    // Native HLS (older iOS): headers cannot be set, so the token goes in the query string
+    player.src = url + '?token=' + encodeURIComponent(token);
+    player.play().catch(() => {});
+    player.onerror = () => { status('Waiting for the broadcast to start… (retrying)'); retryTimer = setTimeout(load, 5000); };
+  } else status('Live playback is unavailable: the video player could not load (check your internet connection) or this browser does not support it.', 'error');
+}
+
+(async () => {
+  if (!token) { $('intro').textContent = ''; $('gate').hidden = false; return; }
+  try {
+    const r = await fetch(CS_SERVER + '/api/event', { headers: { Authorization: 'Bearer ' + token } });
+    if (!r.ok) throw new Error((await r.json()).error || 'Invalid link');
+    ev = await r.json();
+    $('title').textContent = ev.title; document.title = ev.title + ' · CeremonyStream';
+    $('intro').textContent = 'The stream starts automatically when the broadcast is live.';
+    $('viewer').hidden = false; (window.ensureHls ? ensureHls() : Promise.resolve()).then(load);
+    $('retryBtn').onclick = load;
+  } catch (e) { $('intro').textContent = ''; $('gate').hidden = false; $('gate').querySelector('p').textContent = e.message; }
+})();
+
+}
+function page_admin() {
+const $ = (id) => document.getElementById('admin-' + id);
+const H = () => ({ 'Content-Type': 'application/json' });
+const KEY = 'cs-events';
+const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]').filter((e) => e.expiresAt > Date.now()); } catch (_) { return []; } };
+const store = (l) => { try { localStorage.setItem(KEY, JSON.stringify(l)); } catch (_) {} };
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function refresh() {
+  const list = load();
+  $('list').innerHTML = list.length ? '' : '<p class="muted">No events created on this device yet.</p>';
+  list.slice().reverse().forEach((e) => {
+    const watch = location.origin + location.pathname + '?p=watch#t=' + e.watchToken, pub = location.origin + location.pathname + '?p=broadcast#t=' + e.publishToken;
+    const d = document.createElement('div'); d.className = 'panel';
+    d.innerHTML = `<h2>${esc(e.title)}</h2>
+      <p class="muted">Expires ${new Date(e.expiresAt).toLocaleString()}</p>
+      <label>Viewer link (share with guests)</label><input readonly value="${esc(watch)}">
+      <div class="actions"><button class="button secondary" data-copy="${esc(watch)}">Copy viewer link</button></div>
+      <label>Broadcaster link (private: only for the person filming)</label><input readonly value="${esc(pub)}">
+      <div class="actions"><button class="button secondary" data-copy="${esc(pub)}">Copy broadcaster link</button>
+      <button class="button danger" data-del="${esc(e.id)}">End event &amp; revoke links</button></div>`;
+    $('list').appendChild(d);
+  });
+}
+$('createBtn').onclick = async () => {
+  const r = await fetch(CS_SERVER + '/api/events', { method: 'POST', headers: H(), body: JSON.stringify({ title: $('evTitle').value, hours: Number($('evHours').value) }) });
+  if (r.ok) { store(load().concat(await r.json())); refresh(); } else alert('Could not create the event. Try again in a minute.');
+};
+$('list').addEventListener('click', async (e) => {
+  const c = e.target.dataset.copy, d = e.target.dataset.del;
+  if (c) { try { await navigator.clipboard.writeText(c); e.target.textContent = 'Copied ✓'; } catch (_) { prompt('Copy this link:', c); } }
+  if (d && confirm('End this event? Both links stop working immediately.')) { await fetch(CS_SERVER + '/api/events/' + d, { method: 'DELETE' }); store(load().filter((x) => x.id !== d)); refresh(); }
+});
+
+refresh();
+
+}
+
+
+const DB=(function(){
+  let p;
+  const open=()=>p||(p=new Promise((res,rej)=>{const r=indexedDB.open('cs-media',1);r.onupgradeneeded=()=>{r.result.createObjectStore('music',{keyPath:'id'});r.result.createObjectStore('logos',{keyPath:'id'});};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}));
+  const run=(st,mode,fn)=>open().then((db)=>new Promise((res,rej)=>{const t=db.transaction(st,mode),q=fn(t.objectStore(st));t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error);}));
+  return {all:(st)=>run(st,'readonly',(o)=>o.getAll()).catch(()=>[]),put:(st,v)=>run(st,'readwrite',(o)=>o.put(v)),del:(st,id)=>run(st,'readwrite',(o)=>o.delete(id)).catch(()=>{})};
+})();
+
+const Studio=(function(){
+  const POS={tl:'Top left',tc:'Top centre',tr:'Top right',ml:'Middle left',mc:'Centre',mr:'Middle right',bl:'Bottom left',bc:'Bottom centre',br:'Bottom right'};
+  const TYPES={
+    text:{name:'Text',ico:'T',def:{text:'Welcome',size:6,color:'#ffffff',bgOn:true,bg:'#000000',pos:'bc'},f:[['text','Text','text'],['size','Size','range',2,14],['color','Text colour','color'],['bgOn','Background','check'],['bg','Background colour','color'],['pos','Position','pos']]},
+    lower:{name:'Name bar',ico:'▭',def:{tag:'SERMON',text:'Speaker name',color:'#f28c28'},f:[['tag','Tag','text'],['text','Name','text'],['color','Accent colour','color']]},
+    ticker:{name:'Ticker',ico:'↔',def:{text:'Welcome to the ceremony',color:'#a020f0',speed:12},f:[['text','Message','text'],['color','Bar colour','color'],['speed','Speed','range',4,30]]},
+    timer:{name:'Timer',ico:'⏱',def:{text:'Ends in',mins:10,secs:0,down:true,size:6,color:'#ffffff',pos:'tr'},f:[['text','Label','text'],['mins','Minutes','number'],['secs','Extra seconds','number'],['down','Count down','check'],['size','Size','range',2,14],['color','Colour','color'],['pos','Position','pos']]},
+    clock:{name:'Clock',ico:'🕒',def:{text:'',size:6,color:'#ffffff',pos:'tl'},f:[['text','Label','text'],['size','Size','range',2,14],['color','Colour','color'],['pos','Position','pos']]},
+    image:{name:'Image',ico:'🖼',def:{logoId:'',size:20,pos:'tr'},f:[['logoId','Image','logo'],['size','Width (% of screen)','range',5,100],['pos','Position','pos']]},
+    banner:{name:'Banner',ico:'▤',def:{title:'Welcome to Event Name',sub:'at Venue Name',tag:'CONGRATULATIONS',logoId:'',follow:'FOLLOW US ON',handles:'@page1 · @page2',c1:'#a80000',c2:'#f5b800',size:100,pos:'bc'},f:[['title','Headline','text'],['sub','Second line','text'],['tag','Box label','text'],['logoId','Box logo','logo'],['follow','Follow label','text'],['handles','Social handles','text'],['c1','Colour left','color'],['c2','Colour right','color'],['size','Width (% of screen)','range',30,100],['pos','Position','pos']]}
+  };
+  let items=[],phrases=[],stab=true,logos=[],tracks=[],rerender=()=>{};
+  try{items=JSON.parse(localStorage.getItem('cs-studio')||'[]');phrases=JSON.parse(localStorage.getItem('cs-phrases')||'[]');stab=localStorage.getItem('cs-stab')!=='0';}catch(_){}
+  items=items.filter((it)=>TYPES[it.type]);items.forEach((it)=>{it.on=false;});
+  const save=()=>{try{localStorage.setItem('cs-studio',JSON.stringify(items.map((it)=>{const r={};Object.keys(it).forEach((k)=>{if(k[0]!=='_')r[k]=it[k];});return r;})));}catch(_){}};
+  const savePh=()=>{try{localStorage.setItem('cs-phrases',JSON.stringify(phrases));}catch(_){}};
+  const el=(t,c)=>{const e=document.createElement(t);if(c)e.className=c;return e;};
+  const uid=(p)=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+  const clone=(o)=>JSON.parse(JSON.stringify(o));
+  const mk=(l)=>{l.url=URL.createObjectURL(l.blob);l.img=new Image();l.img.src=l.url;};
+  DB.all('logos').then((l)=>{logos=l;logos.forEach(mk);rerender();});
+  DB.all('music').then((t)=>{tracks=t.sort((x,y)=>(x.id<y.id?-1:1));rerender();});
+
+  // ---------- drawing ----------
+  function pl(pos,w,h,W,H){const m=W*0.03,x=pos[1],y=pos[0];return [x==='l'?m:x==='c'?(W-w)/2:W-w-m,y==='t'?m:y==='m'?(H-h)/2:H-h-m];}
+  function rr(c,x,y,w,h,r){c.beginPath();if(c.roundRect)c.roundRect(x,y,w,h,r);else c.rect(x,y,w,h);c.fill();}
+
+  const bcache=new WeakMap();
+  // Builds the banner (headline + logo box + follow bar) once, redraws only when something changes.
+  function banner(it,W){
+    const lg=logos.find((l)=>l.id===it.logoId),rd=lg&&lg.img&&lg.img.naturalWidth?1:0;
+    const Wb=Math.round(W*it.size/100),key=[it.title,it.sub,it.tag,it.follow,it.handles,it.c1,it.c2,it.logoId,rd,Wb].join('|'),old=bcache.get(it);
+    if(old&&old.key===key)return old.cv;
+    const Hb=Math.round(Wb*0.16),h2=Math.round(Hb*0.27),h1=Hb-h2,pad=Math.round(h1*0.08);
+    const cv=document.createElement('canvas');cv.width=Wb;cv.height=Hb;const c=cv.getContext('2d');
+    const F='"Bebas Neue",Impact,"Arial Narrow",sans-serif-condensed,sans-serif';
+    const g=c.createLinearGradient(0,0,Wb,0);g.addColorStop(0,it.c1);g.addColorStop(1,it.c2);c.fillStyle=g;c.fillRect(0,0,Wb,h1);
+    c.fillStyle='#000';c.fillRect(0,h1,Wb,h2);
+    const bs=h1-pad*2,gb=c.createLinearGradient(0,pad,0,pad+bs);gb.addColorStop(0,'#f6d533');gb.addColorStop(1,'#b8921e');c.fillStyle=gb;c.fillRect(pad,pad,bs,bs);
+    c.textBaseline='middle';c.textAlign='center';c.fillStyle='#fff';
+    const tag=(it.tag||'').toUpperCase();let fs=bs*0.16;c.font='700 '+fs+'px '+F;
+    while(c.measureText(tag).width>bs*0.92&&fs>6){fs-=1;c.font='700 '+fs+'px '+F;}
+    c.fillText(tag,pad+bs/2,pad+bs-fs*0.9);
+    if(rd){const lh=bs*0.62,sc=Math.min(lh/lg.img.naturalHeight,bs*0.8/lg.img.naturalWidth),iw=lg.img.naturalWidth*sc,ih=lg.img.naturalHeight*sc;c.drawImage(lg.img,pad+(bs-iw)/2,pad+bs*0.06+(lh-ih)/2,iw,ih);}
+    c.textAlign='left';const x0=pad*2+bs,mw=Wb-x0-pad;
+    const wrap=(txt,max)=>{const out=[];let l='';txt.split(' ').forEach((w)=>{const t=l?l+' '+w:w;if(c.measureText(t).width>max&&l){out.push(l);l=w;}else l=t;});if(l)out.push(l);return out;};
+    let t1=h1*0.32,lines,t2,block;const sub=(it.sub||'').toUpperCase();
+    for(;;){c.font='700 '+t1+'px '+F;lines=wrap((it.title||'').toUpperCase(),mw);t2=t1*0.62;block=lines.length*t1*1.05+(sub?t2*1.3:0);if(block<=h1-pad*2||t1<8)break;t1-=1;}
+    if(sub){c.font='700 '+t2+'px '+F;while(c.measureText(sub).width>mw&&t2>6){t2-=1;c.font='700 '+t2+'px '+F;}}
+    c.fillStyle='#fff';c.shadowColor='rgba(0,0,0,.35)';c.shadowBlur=t1*0.15;
+    let y=(h1-block)/2+t1*0.52;c.font='700 '+t1+'px '+F;
+    lines.forEach((l)=>{c.fillText(l,x0,y);y+=t1*1.05;});
+    if(sub){c.font='700 '+t2+'px '+F;c.fillText(sub,x0,y+t2*0.1);}
+    c.shadowBlur=0;
+    const f1=(it.follow||'').toUpperCase(),f2=(it.handles||'').toUpperCase();let fb=h2*0.55;
+    const meas=()=>{c.font='700 '+fb+'px '+F;const a=c.measureText(f1).width;return [a,a+fb*0.5+c.measureText(f2).width];};
+    while(meas()[1]>Wb-pad*3&&fb>6)fb-=1;
+    const m=meas();c.fillStyle='#ffc400';c.fillText(f1,pad*1.5,h1+h2/2);c.fillStyle='#fff';c.fillText(f2,pad*1.5+m[0]+fb*0.5,h1+h2/2);
+    bcache.set(it,{key,cv});return cv;
+  }
+
+  function anchor(it,W,H){
+    if(it.type==='lower')return [W*0.25,H*0.9];
+    if(it.type==='ticker')return [W/2,H*0.95];
+    const p=it.pos||'mc';return [{l:W*0.1,c:W/2,r:W*0.9}[p[1]],{t:H*0.1,m:H/2,b:H*0.9}[p[0]]];
+  }
+  // Show/hide transition (it._p goes 0..1 while entering, 1..0 while leaving) plus an optional looping effect.
+  const TEXTY=['text','timer','lower','clock'];
+  const CAN_FILTER=(function(){try{return 'filter' in document.createElement('canvas').getContext('2d');}catch(_){return false;}})();
+  function entDur(it){
+    const k=it.anim||'none';
+    if(k==='typewriter'){const n=String(it.text||'').length;return Math.min(5,Math.max(1,n*0.06));}
+    if(k==='fade')return 1;
+    if(k==='blur')return 0.9;
+    return 0.5;
+  }
+  function hasAnim(it){return (it.anim&&it.anim!=='none')||(it.exit&&it.exit!=='same'&&it.exit!=='none')||it.loop==='cycle';}
+  function drawAnim(c,it,W,H,now){
+    let k=it.anim||'none';const lp=it.loop||'none',xk=it.exit||'same',exiting=!it.on&&it._p<1;
+    let cp=1;
+    if(lp==='cycle'){const ph=((now-(it._on0||0))/1000)%18;cp=ph<0.5?ph/0.5:ph<10?1:ph<10.5?1-(ph-10)/0.5:0;if(cp<=0)return;}
+    const p=it._p*cp;
+    it._rv=undefined;it._wv=0;it._rb=0;
+    let al=1,tx=0,ty=0,sc=1,blur=0,hue=0,glow=0;
+    if(k==='typewriter'&&TEXTY.indexOf(it.type)<0)k='fade';
+    if(exiting&&xk!=='same'&&xk!=='none'){
+      // dedicated exit animation, p goes 1 -> 0
+      if(xk==='fade')al=p;
+      else if(xk==='left'){al=p;tx=-(1-p)*W*0.5;}
+      else if(xk==='right'){al=p;tx=(1-p)*W*0.5;}
+      else if(xk==='down'){al=p;ty=(1-p)*H*0.2;}
+      else if(xk==='shrink'){al=p;sc=Math.max(0.01,p);}
+    }else if(p<1||cp<1){
+      const e=1-Math.pow(1-p,3),bk=1+2.70158*Math.pow(p-1,3)+1.70158*Math.pow(p-1,2);
+      if(k==='none')al=cp;
+      else if(k==='fade')al=e;
+      else if(k==='up'){al=e;ty=(1-e)*H*0.2;}
+      else if(k==='down'){al=e;ty=-(1-e)*H*0.2;}
+      else if(k==='left'){al=e;tx=-(1-e)*W*0.5;}
+      else if(k==='right'){al=e;tx=(1-e)*W*0.5;}
+      else if(k==='zoom'){al=e;sc=0.4+0.6*e;}
+      else if(k==='pop'){al=Math.min(1,p*3);sc=Math.max(0.01,0.5+0.5*bk);}
+      else if(k==='typewriter'){it._rv=p;}
+      else if(k==='blur'){al=Math.min(1,e*1.5);if(CAN_FILTER)blur=(1-e)*W*0.02;}
+    }
+    if(it._p>=1&&cp>=1||lp==='cycle'&&cp>=1&&it._p>=1){
+      const t=now;
+      if(lp==='pulse')sc*=1+0.04*Math.sin(t/300);
+      else if(lp==='blink')al*=Math.sin(t/350)>0?1:0.3;
+      else if(lp==='wave'){if(TEXTY.indexOf(it.type)>=0)it._wv=t;else ty-=Math.abs(Math.sin(t/250))*H*0.025;}
+      else if(lp==='shake'){tx+=Math.sin(t/22)*W*0.007;ty+=Math.cos(t/31)*H*0.006;}
+      else if(lp==='glow')glow=1+0.6*Math.sin(t/250);
+      else if(lp==='rainbow'){it._rb=t;hue=(t/8)%360;}
+      else if(lp==='marquee'&&it.type!=='ticker'){tx+=W-(((t-(it._on0||0))/1000*W*0.18)%(2*W));}
+    }
+    const a=anchor(it,W,H);
+    c.save();c.globalAlpha=Math.max(0,Math.min(1,al));
+    const fl=[];if(blur>0.2)fl.push('blur('+blur.toFixed(1)+'px)');
+    if(hue&&CAN_FILTER&&(it.type==='banner'||it.type==='image'))fl.push('hue-rotate('+hue.toFixed(0)+'deg) saturate(1.4)');
+    if(fl.length)c.filter=fl.join(' ');
+    if(glow){c.shadowColor=it.type==='banner'?it.c2:(it.color||'#ffd24d');c.shadowBlur=W*0.012*glow;}
+    c.translate(a[0]+tx,a[1]+ty);c.scale(sc,sc);c.translate(-a[0],-a[1]);
+    drawItem(c,it,W,H,now);c.restore();
+  }
+  // Draws text honouring the typewriter reveal (it._rv) and the per-letter wave (it._wv).
+  function txtAt(c,it,txt,x,y){
+    const s=txt.slice(0,it._rv===undefined?txt.length:Math.ceil(txt.length*it._rv));
+    if(!it._wv){c.fillText(s,x,y);return;}
+    const amp=c.measureText('M').width*0.35;let cx=x;
+    for(let i=0;i<s.length;i++){const ch=s[i];c.fillText(ch,cx,y-Math.abs(Math.sin(it._wv/220+i*0.6))*amp);cx+=c.measureText(ch).width;}
+  }
+  function drawItem(c,it,W,H,now){
+    const u=W/100;c.textBaseline='middle';
+    const rbc=(col)=>it._rb?'hsl('+((it._rb/8)%360).toFixed(0)+',85%,58%)':col;
+    if(it.type==='text'||it.type==='timer'||it.type==='clock'){
+      const fs=it.size*u;c.font='700 '+fs+'px sans-serif';let txt=it.text||'';
+      if(it.type==='timer'){
+        const e=(now-(it.t0||now))/1000,tot=Math.max(0,(it.mins||0)*60+(it.secs||0)),t=Math.max(0,Math.floor(it.down?tot-e:e));
+        const h=Math.floor(t/3600),m=Math.floor(t/60)%60,sec=t%60,P=(n)=>String(n).padStart(2,'0');
+        txt=(it.text?it.text+' ':'')+(h?h+':':'')+P(h?m:Math.floor(t/60))+':'+P(sec);
+      }else if(it.type==='clock'){
+        const d=new Date(),P=(n)=>String(n).padStart(2,'0');
+        txt=(it.text?it.text+' ':'')+P(d.getHours())+':'+P(d.getMinutes())+':'+P(d.getSeconds());
+      }
+      const w=c.measureText(txt).width+fs,h=fs*1.7,p=pl(it.pos,w,h,W,H);
+      if(it.type!=='text'||it.bgOn){c.fillStyle=it.type!=='text'?'rgba(0,0,0,.65)':it.bg;rr(c,p[0],p[1],w,h,fs*0.3);}
+      c.fillStyle=rbc(it.color);txtAt(c,it,txt,p[0]+fs/2,p[1]+h/2);
+    }else if(it.type==='lower'){
+      const fs=W*0.04;c.font='800 '+fs+'px sans-serif';const a=(it.tag||'').toUpperCase(),b=(it.text||'').toUpperCase();
+      const w1=c.measureText(a).width+fs,w2=c.measureText(b).width+fs*1.2,h=fs*1.8,x=W*0.04,y=H*0.82;
+      c.fillStyle='#fff';rr(c,x,y,w1+fs,h,h/2);c.fillStyle=rbc(it.color);rr(c,x+w1,y,w2,h,h/2);
+      c.fillText(a,x+fs/2,y+h/2);c.fillStyle='#fff';txtAt(c,it,b,x+w1+fs*0.6,y+h/2);
+    }else if(it.type==='ticker'){
+      const fs=W*0.04,h=fs*1.8,y=H-h-W*0.03;c.fillStyle=rbc(it.color);c.fillRect(0,y,W,h);c.font='700 '+fs+'px sans-serif';
+      const tw=c.measureText(it.text).width,off=((now/1000)*it.speed*u)%(W+tw);
+      c.save();c.beginPath();c.rect(0,y,W,h);c.clip();c.fillStyle='#fff';c.fillText(it.text,W-off,y+h/2);c.restore();
+    }else if(it.type==='image'){
+      const lg=logos.find((l)=>l.id===it.logoId);if(!lg||!lg.img||!lg.img.naturalWidth)return;
+      const w=it.size*u,h=w*lg.img.naturalHeight/lg.img.naturalWidth,p=pl(it.pos,w,h,W,H);
+      if(it.size>=99&&it.pos[0]!=='m')p[1]=it.pos[0]==='t'?0:H-h;
+      c.drawImage(lg.img,p[0],p[1],w,h);
+    }else if(it.type==='banner'){
+      const b=banner(it,W),p=pl(it.pos,b.width,b.height,W,H);
+      if(it.size>=99&&it.pos[0]!=='m')p[1]=it.pos[0]==='t'?0:H-b.height;
+      c.drawImage(b,p[0],p[1]);
+    }
+  }
+
+  // ---------- audio: one shared context; mic + music mixed into the outgoing audio track ----------
+  let ctx=null,musicEl=null,musicGain=null,monGain=null,micGainNode=null;
+  let micOn=true,micVol=1,musicVol=0.8,monitor=false,cur=-1,playing=false;
+  function audio(){
+    if(ctx)return ctx;
+    const C=window.AudioContext||window.webkitAudioContext;ctx=new C();musicEl=new Audio();musicEl.preload='auto';
+    const src=ctx.createMediaElementSource(musicEl);musicGain=ctx.createGain();musicGain.gain.value=musicVol;
+    monGain=ctx.createGain();monGain.gain.value=monitor?1:0;
+    src.connect(musicGain);musicGain.connect(monGain);monGain.connect(ctx.destination);
+    musicEl.onended=()=>next();
+    const wake=()=>{if(ctx.state!=='running')ctx.resume().catch(()=>{});};
+    ['pointerdown','touchend','click'].forEach((e)=>document.addEventListener(e,wake,true));
+    return ctx;
+  }
+  async function play(i){
+    if(i<0||i>=tracks.length)return;audio();cur=i;
+    if(musicEl._u)URL.revokeObjectURL(musicEl._u);
+    musicEl._u=URL.createObjectURL(tracks[i].blob);musicEl.src=musicEl._u;
+    try{await ctx.resume();await musicEl.play();playing=true;}catch(_){playing=false;}
+    rerender();
+  }
+  function toggle(){
+    audio();if(cur<0)return play(0);
+    if(musicEl.paused){ctx.resume();musicEl.play().catch(()=>{});playing=true;}else{musicEl.pause();playing=false;}
+    rerender();
+  }
+  function next(){if(tracks.length)play((cur+1)%tracks.length);}
+  function delTrack(i){
+    DB.del('music',tracks[i].id);
+    if(i===cur){if(musicEl){musicEl.pause();}cur=-1;playing=false;}else if(i<cur)cur--;
+    tracks.splice(i,1);rerender();
+  }
+  function shrink(file){return new Promise((res,rej)=>{const im=new Image(),u=URL.createObjectURL(file);im.onload=()=>{const m=Math.min(1,1600/Math.max(im.width,im.height)),c=el('canvas');c.width=Math.round(im.width*m);c.height=Math.round(im.height*m);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);c.toBlob((b)=>(b?res(b):rej(new Error('image'))),'image/png');};im.onerror=()=>rej(new Error('image'));im.src=u;});}
+  async function addLogos(files){for(const f of files){try{const l={id:uid('l'),name:f.name.replace(/\.[^.]+$/,''),blob:await shrink(f)};await DB.put('logos',l);mk(l);logos.push(l);}catch(_){}}rerender();}
+  async function addTracks(files){for(const f of files){const t={id:uid('m'),name:f.name.replace(/\.[^.]+$/,''),blob:f};try{await DB.put('music',t);}catch(_){}tracks.push(t);}rerender();}
+
+  // ---------- camera -> canvas (stabilise + overlays) ----------
+  let kill=null;
+  async function attach(raw){
+    if(kill)kill();
+    const vid=document.createElement('video');vid.muted=true;vid.playsInline=true;vid.setAttribute('playsinline','');vid.srcObject=raw;
+    vid.style.cssText='position:fixed;width:1px;height:1px;opacity:.01;pointer-events:none';document.body.appendChild(vid);
+    await new Promise((r)=>{if(vid.readyState>=1)r();else vid.onloadedmetadata=r;});
+    try{await vid.play();}catch(_){}
+    const cv=document.createElement('canvas'),c2=cv.getContext('2d'),sc=document.createElement('canvas'),sx=sc.getContext('2d',{willReadFrequently:true});
+    const SW=120;let SH=68,prev=null,cx=0,cy=0,last=0;
+    const resize=()=>{cv.width=vid.videoWidth||1280;cv.height=vid.videoHeight||720;SH=Math.max(16,Math.round(SW*cv.height/cv.width));sc.width=SW;sc.height=SH;prev=null;};
+    resize();
+    function motion(){
+      sx.drawImage(vid,0,0,SW,SH);const d=sx.getImageData(0,0,SW,SH).data,g=new Uint8Array(SW*SH);
+      for(let i=0;i<g.length;i++)g[i]=(d[i*4]*77+d[i*4+1]*150+d[i*4+2]*29)>>8;
+      if(prev){
+        const R=4,M=6,sad=(a,b)=>{let t=0;for(let y=M;y<SH-M;y+=2)for(let x=M;x<SW-M;x+=2)t+=Math.abs(g[y*SW+x]-prev[(y+b)*SW+x+a]);return t;};
+        let best=sad(0,0)*0.97,bx=0,by=0;
+        for(let b=-R;b<=R;b++)for(let a=-R;a<=R;a++){if(!a&&!b)continue;const t=sad(a,b);if(t<best){best=t;bx=a;by=b;}}
+        const Lx=SW*0.05,Ly=SH*0.05;cx=Math.max(-Lx,Math.min(Lx,cx*0.94+bx));cy=Math.max(-Ly,Math.min(Ly,cy*0.94+by));
+      }
+      prev=g;
+    }
+    function frame(){
+      if(vid.readyState<2)return;
+      if(vid.videoWidth&&cv.width!==vid.videoWidth)resize();
+      const W=cv.width,H=cv.height;let z=1,ox=0,oy=0;
+      if(stab){motion();z=1.1;ox=cx*W/SW;oy=cy*H/SH;}else{cx=cy=0;prev=null;}
+      c2.save();c2.translate(W/2+ox,H/2+oy);c2.scale(z,z);c2.drawImage(vid,-W/2,-H/2,W,H);c2.restore();
+      const now=performance.now(),dt=Math.min(0.1,(now-(last||now))/1000);last=now;
+      items.forEach((it)=>{
+        const tgt=it.on?1:0;if(it._p===undefined)it._p=0;
+        if(it.on&&!it._was)it._on0=now;it._was=it.on;
+        it._p=hasAnim(it)?(tgt>it._p?Math.min(1,it._p+dt/entDur(it)):Math.max(0,it._p-dt/0.5)):tgt;
+        if(it._p>0)drawAnim(c2,it,W,H,now);
+      });
+    }
+    const timer=setInterval(frame,33);frame();
+    const out=cv.captureStream(30);
+    // audio: mic (with its own level / mute) + music, mixed into one track
+    const ac=audio(),dest=ac.createMediaStreamDestination();let micNode=null;
+    const at=raw.getAudioTracks();
+    if(at.length){micNode=ac.createMediaStreamSource(new MediaStream(at));micGainNode=ac.createGain();micGainNode.gain.value=micOn?micVol:0;micNode.connect(micGainNode);micGainNode.connect(dest);}
+    musicGain.connect(dest);
+    if(ac.state!=='running')ac.resume().catch(()=>{});
+    out.addTrack(dest.stream.getAudioTracks()[0]);
+    const vt=out.getVideoTracks()[0],origStop=vt.stop.bind(vt);
+    const k=()=>{clearInterval(timer);vid.remove();try{musicGain.disconnect(dest);}catch(_){}try{if(micNode)micNode.disconnect();}catch(_){}};kill=k;
+    vt.stop=()=>{k();raw.getTracks().forEach((t)=>t.stop());origStop();};   // stopping the stream also releases the real camera and mic
+    return out;
+  }
+
+  // ---------- panel ----------
+  function form(it){
+    const f=el('div','ovform');
+    TYPES[it.type].f.forEach((fd)=>{
+      const k=fd[0],kind=fd[2],l=el('label','item');l.append(fd[1]);let i;
+      if(kind==='pos'||kind==='logo'){
+        i=el('select');
+        if(kind==='pos')Object.keys(POS).forEach((p)=>{const o=el('option');o.value=p;o.textContent=POS[p];i.appendChild(o);});
+        else{const o=el('option');o.value='';o.textContent=logos.length?'Choose…':'Add a logo below first';i.appendChild(o);logos.forEach((lg)=>{const o2=el('option');o2.value=lg.id;o2.textContent=lg.name;i.appendChild(o2);});}
+        i.value=it[k];
+      }else{
+        i=el('input');
+        if(kind==='text'){i.value=it[k];i.setAttribute('list','cs-phr');}
+        else if(kind==='range'){i.type='range';i.min=fd[3];i.max=fd[4];i.value=it[k];}
+        else if(kind==='number'){i.type='number';i.min=0;i.value=it[k]===undefined?0:it[k];}
+        else if(kind==='color'){i.type='color';i.value=it[k];}
+        else if(kind==='check'){i.type='checkbox';i.className='sw';i.checked=!!it[k];}
+      }
+      i.onchange=i.oninput=()=>{it[k]=kind==='check'?i.checked:(kind==='range'||kind==='number')?Number(i.value):i.value;if(it.type==='timer')it.t0=performance.now();save();};
+      l.appendChild(i);f.appendChild(l);
+    });
+    const sel=(key,lbl,opts,dflt)=>{const l=el('label','item');l.append(lbl);const i=el('select');let host=i;opts.forEach((o)=>{if(typeof o==='string'){host=el('optgroup');host.label=o;i.appendChild(host);return;}const op=el('option');op.value=o[0];op.textContent=o[1];host.appendChild(op);});i.value=it[key]||dflt||'none';i.onchange=()=>{it[key]=i.value;save();};l.appendChild(i);f.appendChild(l);};
+    sel('anim','Entrance (how it appears)',[['none','None'],['fade','Fade in (slow, for Bible verses)'],'Slide in',['up','Slide in from bottom'],['down','Slide in from top'],['left','Slide in from left'],['right','Slide in from right'],'Other',['zoom','Zoom in'],['pop','Pop (big to small)'],['typewriter','Typewriter (letter by letter)'],['blur','Blur in']]);
+    sel('exit','Exit (how it leaves)',[['same','Same as entrance, reversed'],['fade','Fade out'],['left','Slide out to left'],['right','Slide out to right'],['down','Slide out to bottom'],['shrink','Shrink out']],'same');
+    sel('loop','While showing',[['none','None'],'Moving',['marquee','Marquee / scroll across'],['cycle','Loop slide (10s on, 8s off, repeat)'],'Attention',['pulse','Pulse'],['blink','Blink (e.g. LIVE)'],['shake','Shake (urgent)'],['glow','Glow pulse'],['wave','Wave / bounce (youth)'],'Style',['rainbow','Rainbow colour cycle']]);
+    return f;
+  }
+
+  function ui(box){
+    let editing=null;
+    const dl=el('datalist');dl.id='cs-phr';document.body.appendChild(dl);
+    const h3=(t)=>{const h=el('h3');h.textContent=t;box.appendChild(h);};
+    const row=(lbl,node)=>{const l=el('label','item');l.append(lbl);l.appendChild(node);box.appendChild(l);};
+    const slider=(lbl,max,val,fn)=>{const i=el('input');i.type='range';i.min=0;i.max=max;i.value=val;i.oninput=()=>fn(Number(i.value));row(lbl,i);};
+    const showQuick=(t)=>{
+      let q=items.find((x)=>x.id==='quick');
+      if(q&&q.on&&q.text===t)q.on=false;
+      else{if(!q){q=Object.assign({id:'quick',type:'text',on:false},clone(TYPES.text.def),{anim:'fade',loop:'none'});items.push(q);}q.text=t;q.on=true;}
+      save();rerender();
+    };
+    function render(){
+      box.innerHTML='';dl.innerHTML='';phrases.forEach((t)=>{const o=el('option');o.value=t;dl.appendChild(o);});
+      const q=el('div','quick five');
+      Object.keys(TYPES).forEach((k)=>{const b=el('button');b.innerHTML='<span class="circ">'+TYPES[k].ico+'</span><span>'+TYPES[k].name+'</span>';
+        b.onclick=()=>{const it=Object.assign({id:uid('o'),type:k,on:false},clone(TYPES[k].def),{anim:'fade',loop:'none'});if(k==='image'&&logos.length)it.logoId=logos[0].id;items.push(it);editing=it.id;save();render();};q.appendChild(b);});
+      box.appendChild(q);
+
+      h3('On screen');
+      if(items.length){const ha=el('button','pill');ha.textContent='Hide all';ha.onclick=()=>{items.forEach((it)=>{it.on=false;});render();};box.appendChild(ha);}
+      else{const p=el('p','muted');p.textContent='Add text, a name bar, ticker, timer or logo above, then switch it on to show it on the stream and recording.';box.appendChild(p);}
+      items.forEach((it)=>{
+        const r=el('div','ovrow'),sw=el('input','sw');sw.type='checkbox';sw.checked=it.on;sw.onchange=()=>{it.on=sw.checked;if(it.on)it.t0=performance.now();};
+        const lg=it.type==='image'?logos.find((x)=>x.id===it.logoId):null;
+        const nm=el('span','nm');nm.textContent=TYPES[it.type].name+': '+(it.text||it.title||(lg&&lg.name)||'');
+        r.append(sw,nm);
+        if(it.text){const st=el('button');st.textContent='★';st.title='Save this text for later';st.onclick=()=>{if(phrases.indexOf(it.text)<0){phrases.push(it.text);savePh();}render();};r.appendChild(st);}
+        const e=el('button');e.textContent='✎';e.onclick=()=>{editing=editing===it.id?null:it.id;render();};
+        const d=el('button');d.textContent='🗑';d.onclick=()=>{items=items.filter((x)=>x!==it);save();render();};
+        r.append(e,d);box.appendChild(r);if(editing===it.id)box.appendChild(form(it));
+      });
+
+      h3('Saved texts (tap to show or hide)');
+      const pr=el('div','ovrow'),pi=el('input');pi.placeholder='Type a text to save';
+      const pa=el('button');pa.textContent='＋';pa.onclick=()=>{const t=pi.value.trim();if(t&&phrases.indexOf(t)<0){phrases.push(t);savePh();}render();};
+      pr.append(pi,pa);box.appendChild(pr);
+      phrases.forEach((t,i)=>{
+        const r=el('div','ovrow'),b=el('button','nm'),qi=items.find((x)=>x.id==='quick');
+        b.textContent=((qi&&qi.on&&qi.text===t)?'● ':'')+t;b.onclick=()=>showQuick(t);
+        const d=el('button');d.textContent='✖';d.onclick=()=>{phrases.splice(i,1);savePh();render();};
+        r.append(b,d);box.appendChild(r);
+      });
+
+      h3('Logos and banners (upload your own)');
+      const li=el('input');li.type='file';li.accept='image/*';li.multiple=true;li.onchange=()=>{addLogos([...li.files]);li.value='';};row('Upload image',li);
+      const strip=el('div','logos');
+      logos.forEach((lg)=>{
+        const w=el('div','logo'),im=el('img');im.src=lg.url;im.alt=lg.name;
+        im.onclick=()=>{let it=items.find((x)=>x.type==='image'&&x.logoId===lg.id);if(it)it.on=!it.on;else{it=Object.assign({id:uid('o'),type:'image',on:true,t0:0},clone(TYPES.image.def),{anim:'fade',loop:'none'});it.logoId=lg.id;if(lg.img&&lg.img.naturalWidth/lg.img.naturalHeight>2.2){it.size=100;it.pos='bc';}items.push(it);}save();render();};
+        const x=el('button');x.textContent='✖';x.onclick=()=>{DB.del('logos',lg.id);logos=logos.filter((y)=>y!==lg);items=items.filter((it)=>!(it.type==='image'&&it.logoId===lg.id));save();render();};
+        w.append(im,x);strip.appendChild(w);
+      });
+      box.appendChild(strip);
+
+      h3('Music (plays into the stream and recording)');
+      const fi=el('input');fi.type='file';fi.accept='audio/*,video/*';fi.multiple=true;fi.onchange=()=>{addTracks([...fi.files]);fi.value='';};row('Add music',fi);
+      tracks.forEach((t,i)=>{
+        const r=el('div','ovrow'),pb=el('button');pb.textContent=(cur===i&&playing)?'⏸':'▶';pb.onclick=()=>(cur===i?toggle():play(i));
+        const nm=el('span','nm');nm.textContent=t.name;const d=el('button');d.textContent='🗑';d.onclick=()=>delTrack(i);
+        r.append(pb,nm,d);box.appendChild(r);
+      });
+      if(tracks.length>1){const nx=el('button','pill');nx.textContent='⏭ Next';nx.onclick=next;box.appendChild(nx);}
+      slider('Music volume',100,musicVol*100,(v)=>{musicVol=v/100;if(musicGain)musicGain.gain.value=musicVol;});
+      slider('Mic volume',150,micVol*100,(v)=>{micVol=v/100;if(micGainNode&&micOn)micGainNode.gain.value=micVol;});
+      const mon=el('input','sw');mon.type='checkbox';mon.checked=monitor;mon.onchange=()=>{monitor=mon.checked;if(monGain)monGain.gain.value=monitor?1:0;};row('Hear music on this phone',mon);
+    }
+    rerender=render;render();
+  }
+  return {attach,ui,stab:()=>stab,setStab:(v)=>{stab=v;try{localStorage.setItem('cs-stab',v?'1':'0');}catch(_){}},mic:()=>micOn,setMic:(v)=>{micOn=v;if(micGainNode)micGainNode.gain.value=v?micVol:0;}};
+})();
+
+function camUi(p){
+  const $=(id)=>document.getElementById(p+'-'+id), v=$('preview'), sheet=$('sheet');
+  const ovl=$('ovl'), dots=v.parentElement.querySelectorAll('.dots button');
+  const go=(n)=>{sheet.hidden=n!==0;ovl.hidden=n!==2;dots.forEach((d,j)=>d.classList.toggle('on',j===n));};
+  dots.forEach((d,j)=>{d.onclick=()=>go(j);});
+  $('menuBtn').onclick=()=>go(sheet.hidden?0:1);
+  Studio.ui(ovl);
+  const st=sheet.querySelector('.stab');st.checked=Studio.stab();st.onchange=()=>Studio.setStab(st.checked);
+  v.onclick=()=>go(1);
+  $('flipBtn').onclick=()=>{const f=$('facing');f.value=f.value==='user'?'environment':'user';f.dispatchEvent(new Event('change'));};
+  $('micBtn').onclick=()=>{const on=!Studio.mic();Studio.setMic(on);$('micBtn').classList.toggle('off',!on);$('micLbl').textContent=on?'on':'off';};
+  $('fsBtn').onclick=()=>{if(document.fullscreenElement)document.exitFullscreen();else if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{});};
+  // keep the broadcaster link when moving between tabs
+  try{if(p==='broadcast'&&location.hash)sessionStorage.setItem('cs-bh',location.hash);}catch(_){}
+  let h='';try{h=location.hash||sessionStorage.getItem('cs-bh')||'';}catch(_){}
+  document.querySelectorAll('.tabs a[data-live]').forEach((a)=>{a.href='?p=broadcast'+h;});
+}
+
+// Simple page router: index.html?p=record  (links with #t=TOKEN keep working)
+(function () {
+  const names = ['index', 'record', 'broadcast', 'watch', 'admin'];
+  const p = new URLSearchParams(location.search).get('p');
+  const page = names.includes(p) ? p : 'record';
+  document.getElementById('view-' + page).hidden = false;
+  document.title = 'CeremonyStream' + (page === 'index' ? '' : ' · ' + page);
+  const run = { record: page_record, broadcast: page_broadcast, watch: page_watch, admin: page_admin }[page];
+  if (page === 'record' || page === 'broadcast') camUi(page);
+  if (run) run();
+})();
+</script>
+
+<button id="installBtn" hidden style="position:fixed;right:14px;bottom:14px;z-index:9999;border:0;border-radius:999px;padding:12px 18px;font:700 15px system-ui,sans-serif;background:#1457d9;color:#fff;box-shadow:0 4px 14px #0006;cursor:pointer">Install app</button>
+<script>
+// Installable app (PWA): register the offline helper and show an Install button when the browser allows it.
+(function(){
+  if('serviceWorker' in navigator&&location.protocol!=='file:'){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}
+  var btn=document.getElementById('installBtn'),ev=null;
+  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();ev=e;btn.hidden=false;});
+  btn.onclick=function(){if(!ev)return;ev.prompt();ev.userChoice.finally(function(){ev=null;btn.hidden=true;});};
+  window.addEventListener('appinstalled',function(){btn.hidden=true;});
+})();
+</script>
+</body>
+</html>
